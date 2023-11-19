@@ -1,14 +1,11 @@
 package com.example.category;
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -17,26 +14,29 @@ import java.net.URL;
 import java.net.URLEncoder;
 
 public class databases extends AsyncTask<String, Void, String> {
-    Context context;
+    private Context context;
+    private DataCallback dataCallback;
 
-    public databases(Context context) {
+    public databases(Context context, DataCallback dataCallback) {
         this.context = context;
+        this.dataCallback = dataCallback;
+    }
+
+    public interface DataCallback {
+        void onDataReceived(String result);
     }
 
     @Override
     protected String doInBackground(String... strings) {
         String name = strings[0];
-        String kategori_url = "http://192.168.1.5/kategori.php"; // Ganti URL sesuai dengan kebutuhan
-
-        // Dapatkan kategori dari Spinner yang sudah dipilih sebelumnya
         String type = strings[1];
+        String kategori_url = "http://192.168.1.5/kategori.php"; // Ganti URL sesuai dengan kebutuhan
 
         try {
             URL url = new URL(kategori_url);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setRequestMethod("POST");
             httpURLConnection.setDoOutput(true);
-            httpURLConnection.setDoInput(true);
             OutputStream outputStream = httpURLConnection.getOutputStream();
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"));
 
@@ -47,21 +47,16 @@ public class databases extends AsyncTask<String, Void, String> {
 
             bufferedWriter.flush();
             bufferedWriter.close();
+            outputStream.close();
 
-            InputStream inputStream = httpURLConnection.getInputStream();
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            StringBuilder result = new StringBuilder();
+            int responseCode = httpURLConnection.getResponseCode();
 
-            // Baca respon dari server
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                result.append(new String(buffer, 0, bytesRead));
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // Berhasil mengirim data ke server
+                return "Data berhasil dikirim ke server";
+            } else {
+                return "Gagal mengirim data ke server. Response Code: " + responseCode;
             }
-
-            inputStream.close();
-            httpURLConnection.disconnect();
-
-            return result.toString();
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -69,35 +64,23 @@ public class databases extends AsyncTask<String, Void, String> {
             e.printStackTrace();
         }
 
-        return null;
-    }
-
-    @Override
-    protected void onPreExecute() {
-        super.onPreExecute();
+        return "Exception occurred";
     }
 
     @Override
     protected void onPostExecute(String result) {
-        if (result != null) {
-            String[] strings = new String[1];
-            int typeValue = Integer.parseInt(strings[1]);
+        // Pastikan dataCallback tidak null sebelum memanggil metodenya
+        if (dataCallback != null) {
+            // Panggil callback untuk memberitahu MainActivity bahwa data sudah terkirim
+            dataCallback.onDataReceived(result);
 
-            // Assuming you have a TextView with ID "categoryDataIncome" and "categoryDataOutcome" in your layout
-            if (typeValue == 1) {
-                TextView categoryDataIncomeTextView = ((Activity) context).findViewById(R.id.categoryDataIncome);
-                categoryDataIncomeTextView.setText(result);
-            } else {
-                TextView categoryDataOutcomeTextView = ((Activity) context).findViewById(R.id.categoryDataOutcome);
-                categoryDataOutcomeTextView.setText(result);
+            // Jika berhasil mengirim data, panggil AsyncTask baru untuk mengambil data dari server
+            if (result != null && result.equals("Data berhasil dikirim ke server")) {
+                new GetDataFromServer(context, dataCallback).execute();
             }
         } else {
-            Toast.makeText(context, "Failed to retrieve data from the server", Toast.LENGTH_SHORT).show(); //Bahwa database tersebut NULL atau kosong saat dimasukan.
+            // Handle kasus di mana dataCallback null
+            Toast.makeText(context, "DataCallback is null", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    @Override
-    protected void onProgressUpdate(Void... values) {
-        super.onProgressUpdate(values);
     }
 }

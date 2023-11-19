@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -39,7 +40,12 @@ public class MainActivity extends AppCompatActivity {
         adapter = ArrayAdapter.createFromResource(this, R.array.category_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        dbHelper = new databases(this);
+        dbHelper = new databases(this, new databases.DataCallback() {
+            @Override
+            public void onDataReceived(String result) {
+                Toast.makeText(MainActivity.this, "Data received: " + result, Toast.LENGTH_SHORT).show();
+            }
+        });
 
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -121,13 +127,21 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                String input = inputField.getText().toString();
+                String input = inputField.getText().toString().trim();
+
+                if (input.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Input cannot be empty", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 int typeValue = type.getSelectedItemPosition() + 1; // Assuming types are 1 and 2
 
-                // Call AsyncTask to save data
-                new databases(MainActivity.this).execute(input, String.valueOf(typeValue));
-
-                // Update the corresponding LinearLayout with the new data
+                new databases(MainActivity.this, new databases.DataCallback() {
+                    @Override
+                    public void onDataReceived(String result) {
+                        // Handle data received
+                    }
+                }).execute(input, String.valueOf(typeValue));
                 updateLinearLayout(typeValue, input);
 
                 // Close the keyboard
@@ -135,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
                 imm.hideSoftInputFromWindow(inputField.getWindowToken(), 0);
             }
         });
+
 
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
@@ -169,8 +184,23 @@ public class MainActivity extends AppCompatActivity {
                 String editedData = editField.getText().toString();
                 int editedType = editType.getSelectedItemPosition() + 1; // Assuming types are 1 and 2
 
+                if (editedData.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Input cannot be empty", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 // Call AsyncTask to update data
-                new UpdateDatabase(MainActivity.this).execute(oldData, editedData, String.valueOf(editedType));
+                new UpdateDatabase(MainActivity.this, new databases.DataCallback() {
+                    @Override
+                    public void onDataReceived(String result) {
+                        // Handle data received
+                    }
+                }, new UpdateDatabase.UpdateCallback() {
+                    @Override
+                    public void onUpdateComplete() {
+                        // Panggil metode untuk membaca ulang data dari server dan memperbarui tampilan UI
+                        fetchDataAndUpdateUI();
+                    }
+                }).execute(oldData, editedData, String.valueOf(editedType));
 
                 // Close the keyboard
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -187,4 +217,17 @@ public class MainActivity extends AppCompatActivity {
 
         builder.show();
     }
+
+    // Metode untuk membaca ulang data dari server dan memperbarui tampilan UI
+    private void fetchDataAndUpdateUI() {
+        // Implementasikan logika untuk membaca ulang data dari server dan memperbarui tampilan UI
+        new GetDataFromServer(MainActivity.this, new databases.DataCallback() {
+            @Override
+            public void onDataReceived(String result) {
+                // Handle data received
+            }
+        }).execute();
+        // Tambahkan logika lain yang diperlukan untuk pembaruan UI
+    }
+
 }
