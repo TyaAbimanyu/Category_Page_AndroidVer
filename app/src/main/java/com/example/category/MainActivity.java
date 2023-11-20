@@ -54,9 +54,9 @@ public class MainActivity extends AppCompatActivity {
 
                 // Show the corresponding popup based on the selected item
                 if (selectedItemPosition == 0) {
-                    showPopupInput(R.layout.pop_menu_income);
-                } else {
                     showPopupInput(R.layout.pop_menu_outcome);
+                } else {
+                    showPopupInput(R.layout.pop_menu_income);
                 }
             }
         });
@@ -94,6 +94,14 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        Button deleteButton = findViewById(R.id.DeleteButton);
+        deleteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDeleteDialog();
+            }
+        });
     }
 
     private void updateLinearLayout(int type, String data) {
@@ -113,6 +121,7 @@ public class MainActivity extends AppCompatActivity {
         // Add the TextView to the target LinearLayout
         targetLayout.addView(textView);
     }
+
     private void showPopupInput(int layoutResourceId) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
@@ -230,4 +239,53 @@ public class MainActivity extends AppCompatActivity {
         // Tambahkan logika lain yang diperlukan untuk pembaruan UI
     }
 
+    private void showDeleteDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View deleteDialogView = LayoutInflater.from(this).inflate(R.layout.delete_menu, null);
+
+        // Find views in deleteDialogView
+        TextView deleteDialogTitle = deleteDialogView.findViewById(R.id.deleteDialogTitle);
+        TextView deleteDialogMessage = deleteDialogView.findViewById(R.id.deleteDialogMessage);
+        EditText deleteItemNameInput = deleteDialogView.findViewById(R.id.deleteItemNameInput); // New EditText
+        Button deleteDialogButton = deleteDialogView.findViewById(R.id.deleteDialogButton);
+
+        deleteDialogTitle.setText("Delete Item");
+        deleteDialogMessage.setText("Are you sure you want to delete this item?");
+
+        AlertDialog deleteDialog = builder.setView(deleteDialogView).create();
+
+        deleteDialogButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Get the item name from the EditText
+                String itemNameToDelete = deleteItemNameInput.getText().toString().trim();
+
+                if (itemNameToDelete.isEmpty()) {
+                    // Notify the user that the input is empty
+                    Toast.makeText(MainActivity.this, "Please enter an item name", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // Call AsyncTask to delete data
+                new DeleteDatabase(MainActivity.this, new databases.DataCallback() {
+                    @Override
+                    public void onDataReceived(String result) {
+                        // Handle data received
+                    }
+                }).execute(itemNameToDelete);
+
+                // Close the dialog
+                deleteDialog.dismiss();
+            }
+        });
+
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.cancel();
+            }
+        });
+
+        deleteDialog.show();
+    }
 }

@@ -2,6 +2,7 @@ package com.example.category;
 
 import android.content.Context;
 import android.os.AsyncTask;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.io.BufferedWriter;
@@ -30,41 +31,41 @@ public class databases extends AsyncTask<String, Void, String> {
     protected String doInBackground(String... strings) {
         String name = strings[0];
         String type = strings[1];
-        String kategori_url = "http://192.168.1.5/kategori.php"; // Ganti URL sesuai dengan kebutuhan
+        String kategori_url = "http://192.168.1.5/kategori.php";
 
         try {
             URL url = new URL(kategori_url);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setRequestMethod("POST");
             httpURLConnection.setDoOutput(true);
-            OutputStream outputStream = httpURLConnection.getOutputStream();
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"));
 
-            // Kirim data ke server
-            String postData = URLEncoder.encode("name", "UTF-8") + "=" + URLEncoder.encode(name, "UTF-8");
-            postData += "&" + URLEncoder.encode("type", "UTF-8") + "=" + URLEncoder.encode(type, "UTF-8");
-            bufferedWriter.write(postData);
+            try (OutputStream outputStream = httpURLConnection.getOutputStream();
+                 BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))) {
 
-            bufferedWriter.flush();
-            bufferedWriter.close();
-            outputStream.close();
+                String postData = URLEncoder.encode("name", "UTF-8") + "=" + URLEncoder.encode(name, "UTF-8");
+                postData += "&" + URLEncoder.encode("type", "UTF-8") + "=" + URLEncoder.encode(type, "UTF-8");
+
+                bufferedWriter.write(postData);
+                bufferedWriter.flush();
+
+                Log.d("AsyncTask", "Data sent to server: " + postData);
+            }
 
             int responseCode = httpURLConnection.getResponseCode();
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Berhasil mengirim data ke server
-                return "Data berhasil dikirim ke server";
+                return "Data successfully sent to the server";
             } else {
-                return "Gagal mengirim data ke server. Response Code: " + responseCode;
+                return "Failed to send data to server. Response Code: " + responseCode;
             }
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
+            return "Invalid URL";
         } catch (IOException e) {
             e.printStackTrace();
+            return "Failed to send data to server. IOException: " + e.getMessage();
         }
-
-        return "Exception occurred";
     }
 
     @Override
@@ -74,9 +75,9 @@ public class databases extends AsyncTask<String, Void, String> {
             // Panggil callback untuk memberitahu MainActivity bahwa data sudah terkirim
             dataCallback.onDataReceived(result);
 
-            // Jika berhasil mengirim data, panggil AsyncTask baru untuk mengambil data dari server
+            // Jika berhasil mengirim data, tampilkan pesan Toast
             if (result != null && result.equals("Data berhasil dikirim ke server")) {
-                new GetDataFromServer(context, dataCallback).execute();
+                Toast.makeText(context, "Data berhasil dikirim ke server", Toast.LENGTH_SHORT).show();
             }
         } else {
             // Handle kasus di mana dataCallback null
